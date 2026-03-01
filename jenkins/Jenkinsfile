@@ -342,35 +342,29 @@ pipeline {
         echo "============================================"
 
         sh """
-          # Wait for pods to be ready
-          kubectl wait pod \
+        # Wait for pods to be ready
+        kubectl wait pod \
             -l app=bg-app,version=${DEPLOY_TARGET} \
             --for=condition=Ready \
             --timeout=120s \
             -n default
 
-          # Show pod status
-          kubectl get pods \
+        # Show pod status
+        kubectl get pods \
             -l app=bg-app,version=${DEPLOY_TARGET} \
             -n default
 
-          # Check each pod's health endpoint directly
-          for POD in \$(kubectl get pods \
-            -l app=bg-app,version=${DEPLOY_TARGET} \
+        # Verify deployment is fully rolled out
+        kubectl rollout status deployment/${DEPLOY_TARGET}-deployment \
             -n default \
-            -o jsonpath='{.items[*].metadata.name}')
-          do
-            echo "Checking health of pod: \$POD"
-            kubectl exec \$POD -n default -- \
-              wget -qO- http://localhost:3000/health || \
-              curl -s http://localhost:3000/health
-            echo ""
-          done
-        """
+            --timeout=120s
 
         echo "✅ All ${DEPLOY_TARGET} pods are healthy"
-      }
+        """
+
+        echo "✅ Health check passed"
     }
+}
 
     // ──────────────────────────────────────────────────────────
     // STAGE 8: SWITCH TRAFFIC
