@@ -56,6 +56,8 @@ pipeline {
   // Available to ALL stages in the pipeline
   // Credentials stored in Jenkins → never hardcoded here
   environment {
+    // ... existing vars ...
+    KUBECONFIG = "/var/lib/jenkins/.kube/config"
 
     // AWS Configuration
     AWS_REGION      = "ap-south-1"
@@ -71,6 +73,10 @@ pipeline {
 
     // ALB URL for verification
     ALB_URL         = "k8s-default-bgingres-2cbac6846c-907229940.ap-south-1.elb.amazonaws.com"
+
+    // kubectl config — tells kubectl where to find cluster credentials
+    KUBECONFIG      = "/var/lib/jenkins/.kube/config"
+
 
     // Build tag — unique per build using Jenkins BUILD_NUMBER
     // Example: v1.0-42 (version 1.0, build number 42)
