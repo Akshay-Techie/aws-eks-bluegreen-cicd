@@ -1,0 +1,159 @@
+# ============================================================
+# .GITIGNORE
+# Files that should NEVER be committed to GitHub
+#
+# WHY THIS MATTERS:
+# Accidentally pushing credentials to GitHub =
+# → Bots scan GitHub 24/7 for exposed keys
+# → Your AWS account gets compromised within minutes
+# → Attackers spin up crypto miners = huge AWS bill
+# ============================================================
+
+
+# ── TERRAFORM ──────────────────────────────────────────────
+
+# State files — contain sensitive resource info + account details
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+
+# tfvars — contains your account ID, emails, config values
+*.tfvars
+*.tfvars.json
+
+# Terraform working directory — downloaded providers (huge files)
+**/.terraform/
+.terraform.lock.hcl
+
+# Terraform crash logs
+crash.log
+crash.*.log
+
+# Override files — local overrides, not for sharing
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+
+# ── AWS CREDENTIALS ────────────────────────────────────────
+
+# AWS credentials and config
+.aws/
+aws-credentials
+*credentials*
+
+# PEM key files — SSH private keys
+*.pem
+*.key
+*.p12
+*.pfx
+
+# AWS SAM
+.aws-sam/
+
+
+# ── DOCKER ─────────────────────────────────────────────────
+
+# Docker environment files
+.env
+.env.*
+*.env
+
+# Docker credentials
+.docker/config.json
+
+
+# ── PYTHON ─────────────────────────────────────────────────
+
+# Virtual environments
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+
+# ── KUBERNETES ─────────────────────────────────────────────
+
+# kubeconfig — contains cluster credentials
+kubeconfig
+.kube/
+*kubeconfig*
+
+
+# ── IDE / EDITOR ───────────────────────────────────────────
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# IntelliJ
+.idea/
+*.iml
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.nfs*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+
+# ── LOGS ───────────────────────────────────────────────────
+
+*.log
+logs/
+*.log.*
+
+
+# ── SECRETS ────────────────────────────────────────────────
+
+# Any file with these names
+secrets.*
+secret.*
+*secret*
+*secrets*
+.secrets/
+
+# Jenkins credentials
+jenkins_home/
+jenkins.xml
+
+
+# ── MISC ───────────────────────────────────────────────────
+
+# Zip files
+*.zip
+*.tar.gz
+*.tar
+
+# Node modules (if any tooling added later)
+node_modules/
+
+# Temporary files
+tmp/
+temp/
+.tmp/

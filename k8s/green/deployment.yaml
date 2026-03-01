@@ -1,0 +1,91 @@
+# ============================================================
+# GREEN DEPLOYMENT — k8s/green/deployment.yaml
+#
+# BLUE-GREEN CONTEXT:
+# Green = NEW version being deployed by Jenkins
+#
+# DEPLOYMENT FLOW:
+#   1. Jenkins builds new Docker image with new code
+#   2. Jenkins pushes image to ECR with new tag
+#   3. Jenkins updates THIS file with new image tag
+#   4. kubectl apply → green pods update with new image
+#   5. Readiness probe checks → all green pods healthy?
+#   6. Jenkins runs switch script → ALB points to green
+#   7. Green is now PRODUCTION
+#   8. Blue stays running for rollback
+#
+# KEY DIFFERENCE FROM BLUE:
+# → labels: version: green
+# → env COLOR: green
+# → Everything else identical
+# ============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: green-deployment
+  namespace: default
+  labels:
+    app: bg-app
+    version: green
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: bg-app
+      version: green      # ← manages GREEN pods only
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+  template:
+    metadata:
+      labels:
+        app: bg-app
+        version: green    # ← green-service finds pods by this label
+
+    spec:
+      containers:
+        - name: bg-app
+          image: 793433927733.dkr.ecr.ap-south-1.amazonaws.com/bg-project-app:latest
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 3000
+              name: http
+
+          env:
+            - name: COLOR
+              value: "green"       # green for green deployment
+            - name: VERSION
+              value: "v1.0"       # ← simple string, Jenkins updates this
+
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3

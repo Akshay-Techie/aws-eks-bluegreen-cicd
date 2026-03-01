@@ -1,0 +1,53 @@
+# ============================================================
+# BLUE SERVICE — k8s/blue/service.yaml
+#
+# WHAT IS A SERVICE?
+# Problem: Pods have dynamic IPs that change on every restart
+# Solution: Service provides a STABLE virtual IP
+#
+# Service acts as a load balancer INSIDE the cluster:
+#   ALB → Ingress → blue-service → pod1 (10.0.10.5)
+#                               → pod2 (10.0.11.8)
+#
+# Even if pods restart and get new IPs:
+# → Service still finds them via label selector
+# → Traffic always reaches the right pods
+#
+# TYPE: ClusterIP
+# → Internal IP only — not reachable from internet directly
+# → ALB Ingress routes external traffic TO this service
+# → Traffic path: Internet → ALB → Ingress → Service → Pods
+#
+# BLUE-GREEN SWITCHING:
+# ingress.yaml points to EITHER blue-service OR green-service
+# Switching = change that one line → ALB updates → done
+# ============================================================
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: blue-service        # Ingress references this name
+  namespace: default
+  labels:
+    app: bg-app
+    version: blue
+
+spec:
+  # ClusterIP = internal only
+  # ALB reaches this via Ingress annotation
+  type: ClusterIP
+
+  # ── WHICH PODS TO ROUTE TO? ────────────────────────────────
+  # Service finds pods matching BOTH these labels
+  # Only routes to BLUE pods — never touches green pods
+  selector:
+    app: bg-app
+    version: blue
+
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80          # Service listens on port 80
+      targetPort: 3000  # Forwards to pod's port 3000
+      # ALB sends to :80 → Service forwards to pod :3000

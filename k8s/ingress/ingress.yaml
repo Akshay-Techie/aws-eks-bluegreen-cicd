@@ -1,0 +1,57 @@
+# ============================================================
+# ALB INGRESS — k8s/ingress/ingress.yaml
+#
+# TRAFFIC FLOW:
+#   User → ALB (public IP) → Ingress rules → Service → Pods
+#
+# BLUE-GREEN SWITCHING:
+# Change spec.rules.http.paths.backend.service.name
+#   blue-service  → blue is production
+#   green-service → green is production
+# ============================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: bg-ingress
+  namespace: default
+  annotations:
+    # Public ALB — accessible from internet
+    alb.ingress.kubernetes.io/scheme: internet-facing
+
+    # Route directly to pod IPs
+    alb.ingress.kubernetes.io/target-type: ip
+
+    # Health check settings
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+
+    # Public subnets for ALB — from terraform output
+    alb.ingress.kubernetes.io/subnets: subnet-0a374071b32e019db,subnet-0ff23b2730380f0fa
+
+    # Tags on ALB in AWS console
+    alb.ingress.kubernetes.io/tags: Project=bg-project,ManagedBy=kubectl
+
+spec:
+  # ← replaces deprecated kubernetes.io/ingress.class annotation
+  ingressClassName: alb
+
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # ════════════════════════════════════
+                # ← THIS LINE CONTROLS BLUE-GREEN
+                # blue-service  = blue is production
+                # green-service = green is production
+                # ════════════════════════════════════
+                name: blue-service
+                port:
+                  number: 80

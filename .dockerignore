@@ -1,0 +1,98 @@
+# ============================================================
+# .DOCKERIGNORE
+# Files excluded when building Docker image
+#
+# WHY THIS MATTERS:
+# Docker sends ALL files in build context to Docker daemon
+# Without .dockerignore:
+# → .terraform/ (hundreds of MB) gets sent = slow builds
+# → credentials accidentally baked into image = security risk
+# → node_modules, __pycache__ etc bloat image size
+#
+# With .dockerignore:
+# → Only app/ files sent to Docker = fast builds
+# → No credentials in image = secure
+# → Smaller image = faster ECR push + EKS pull
+# ============================================================
+
+
+# ── TERRAFORM ──────────────────────────────────────────────
+# Terraform working directory is huge (downloaded providers)
+terraform/
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+
+# ── KUBERNETES ─────────────────────────────────────────────
+k8s/
+
+
+# ── CI/CD ──────────────────────────────────────────────────
+jenkins/
+scripts/
+.jenkins/
+
+
+# ── GIT ────────────────────────────────────────────────────
+.git/
+.gitignore
+
+
+# ── CREDENTIALS & SECRETS ──────────────────────────────────
+*.pem
+*.key
+.aws/
+.env
+.env.*
+secrets.*
+kubeconfig
+.kube/
+
+
+# ── PYTHON ARTIFACTS ───────────────────────────────────────
+# These should NOT be in the image — pip install handles deps
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+
+# ── IDE ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.code-workspace
+
+
+# ── OS FILES ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*~
+
+
+# ── LOGS ───────────────────────────────────────────────────
+*.log
+logs/
+
+
+# ── DOCS ───────────────────────────────────────────────────
+# Don't include docs in production image
+*.md
+README*
+docs/
+
+
+# ── TEMP ───────────────────────────────────────────────────
+tmp/
+temp/
+.tmp/

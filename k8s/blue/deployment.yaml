@@ -1,0 +1,137 @@
+# ============================================================
+# BLUE DEPLOYMENT — k8s/blue/deployment.yaml
+#
+# WHAT IS A DEPLOYMENT?
+# A Deployment tells Kubernetes:
+# "Always keep 2 copies of this pod running"
+# If a pod crashes → K8s automatically creates a new one
+# If a node dies   → K8s moves pods to healthy node
+#
+# BLUE-GREEN CONTEXT:
+# Blue = CURRENT production version (stable, serving traffic)
+# Green = NEW version (deployed, tested, then switched to)
+#
+# HOW BLUE-GREEN WORKS:
+#   Step 1: Blue is live → users hit blue pods
+#   Step 2: Jenkins builds new image → deploys to GREEN
+#   Step 3: Green health checks pass
+#   Step 4: Switch ALB → green-service (one line change)
+#   Step 5: Users now hit green pods → zero downtime
+#   Step 6: Blue stays running → instant rollback if needed
+# ============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: blue-deployment
+  namespace: default        # default namespace — fine for learning
+  labels:
+    app: bg-app             # app label — groups blue+green together
+    version: blue           # version label — identifies this as blue
+
+spec:
+  # ── HOW MANY PODS? ─────────────────────────────────────────
+  # 2 replicas = 2 pods running at all times
+  # If one pod crashes → 1 pod still serves traffic
+  # K8s immediately starts a replacement pod
+  replicas: 2
+
+  # ── WHICH PODS DOES THIS DEPLOYMENT MANAGE? ────────────────
+  # Deployment finds and manages pods matching BOTH labels
+  # Must match template.metadata.labels exactly
+  selector:
+    matchLabels:
+      app: bg-app
+      version: blue
+
+  # ── HOW TO UPDATE PODS? ────────────────────────────────────
+  # RollingUpdate = replace pods one at a time
+  # maxUnavailable: 0 → never go below 2 running pods
+  # maxSurge: 1       → temporarily allow 3 pods during update
+  # Result: always at least 2 pods serving traffic during update
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+  # ── POD TEMPLATE ───────────────────────────────────────────
+  # This is the blueprint for each pod
+  template:
+    metadata:
+      labels:
+        app: bg-app
+        version: blue       # ← Service uses this to find pods
+
+    spec:
+      containers:
+        - name: bg-app
+
+          # ECR image URL — Jenkins updates this tag on each build
+          # Format: <account>.dkr.ecr.<region>.amazonaws.com/<repo>:<tag>
+          image: 793433927733.dkr.ecr.ap-south-1.amazonaws.com/bg-project-app:latest
+
+          # Always pull fresh image from ECR
+          # Even if same tag exists locally on the node
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 3000   # Flask app listens on 3000
+              name: http
+
+          # ── ENVIRONMENT VARIABLES ────────────────────────
+          # These are passed into the Flask app
+          # COLOR=blue → app returns {"color": "blue"} in response
+          # This is how we visually confirm which version is live
+          env:
+            - name: COLOR
+              value: "blue"       # blue for blue deployment
+            - name: VERSION
+              value: "v1.0"       # ← simple string, Jenkins updates this
+
+          # ── RESOURCE LIMITS ──────────────────────────────
+          # REQUESTS = minimum guaranteed resources
+          #   Used by scheduler to decide which node to place pod on
+          #   "This pod needs at least 64Mi RAM and 0.1 CPU"
+          #
+          # LIMITS = maximum allowed resources
+          #   Pod is killed/throttled if it exceeds this
+          #   "This pod cannot use more than 128Mi RAM"
+          #
+          # 100m = 100 millicores = 0.1 CPU core
+          # 1000m = 1 full CPU core
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+
+          # ── LIVENESS PROBE ────────────────────────────────
+          # "Is this container still alive and working?"
+          # Hits /health endpoint every 10 seconds
+          # If it fails 3 times in a row → K8s RESTARTS the container
+          # Use case: detect deadlocks, infinite loops, crashes
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15   # wait 15s after start (app needs time to boot)
+            periodSeconds: 10          # check every 10 seconds
+            failureThreshold: 3        # restart after 3 consecutive failures
+
+          # ── READINESS PROBE ───────────────────────────────
+          # "Is this container ready to receive traffic?"
+          # Hits /ready endpoint every 5 seconds
+          # If it fails → K8s REMOVES pod from load balancer
+          # Pod stays running but gets zero traffic until ready again
+          # Use case: app still booting, waiting for DB connection
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
